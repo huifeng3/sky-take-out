@@ -6,7 +6,11 @@ sky:
     database: sky_take_out
     username: root
     password: 314314
-
   alioss:
     endpoint: oss-cn-beijing.aliyuncs.com
     bucketName: java-huifeng3
+  redis:
+    host: localhost
+    port: 6379
+    password: 314314
+    database: 0
