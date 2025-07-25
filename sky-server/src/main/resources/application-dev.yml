@@ -14,3 +14,16 @@ sky:
     port: 6379
     password: 314314
     database: 0
+  wechat:
+    mchid:
+    mchSerialNo:
+    privateKeyFilePath:
+    apiV3Key:
+    weChatPayCertFilePath:
+    notifyUrl:
+    refundNotifyUrl:
+  shop:
+    address: 北京市海淀区上地十街10号
+  baidu:
+    ak:
+
