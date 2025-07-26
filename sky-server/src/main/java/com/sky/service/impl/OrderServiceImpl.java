@@ -20,6 +20,7 @@ import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
+import com.sky.websocket.WebSocketServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +59,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private WeChatPayUtil weChatPayUtil;
 
+    @Autowired
+    private WebSocketServer webSocketServer;
+
     @Value("${sky.shop.address}")
     private String shopAddress;
 
@@ -80,7 +84,7 @@ public class OrderServiceImpl implements OrderService {
             throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
         }
 
-//        //检查用户的收货地址是否超出配送范围
+        //检查用户的收货地址是否超出配送范围
 //        checkOutofRange(addressBook.getCityName() + addressBook.getDistrictName() + addressBook.getDetail());
 
         //查询当前用户的购物车数据
@@ -174,6 +178,15 @@ public class OrderServiceImpl implements OrderService {
         log.info("调用updateStatus，用于替换微信支付更新数据库状态的问题");
         orderMapper.updateStatus(OrderStatus, OrderPaidStatus, LocalDateTime.now(), orderNumber);
 
+        //通过websocket向客户端浏览器推送消息 type orderId content
+        Map map = new HashMap();
+        map.put("type", 1);
+//        map.put("orderId", ordersDB.getId());
+        map.put("content", "订单号" + orderNumber + "支付成功");
+
+        String json = JSON.toJSONString(map);
+        webSocketServer.sendToAllClient(json);
+
         return vo;
     }
 
@@ -196,6 +209,15 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderMapper.update(orders);
+
+//        //通过websocket向客户端浏览器推送消息 type orderId content
+//        Map map = new HashMap();
+//        map.put("type", 1);
+//        map.put("orderId", ordersDB.getId());
+//        map.put("content", "订单号" + outTradeNo + "支付成功");
+//
+//        String json = JSON.toJSONString(map);
+//        webSocketServer.sendToAllClient(json);
     }
 
     @Override
@@ -358,6 +380,22 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public void reminder(Long id){
+        Orders orders = orderMapper.getById(id);
+        if(orders == null){
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        Map map = new HashMap();
+        map.put("type", 2);
+        map.put("orderId", id);
+        map.put("content", "订单号：" + orders.getNumber());
+
+        webSocketServer.sendToAllClient(JSON.toJSONString(map));
+
+    }
+
+    @Override
     public void repetition(Long id) {
         Long userId = BaseContext.getCurrentId();
         List<OrderDetail> orderDetailList = orderDetailMapper.listByOrderId(id);
@@ -430,7 +468,7 @@ public class OrderServiceImpl implements OrderService {
 
     private void checkOutofRange(String address){
         Map<String, String> map = new HashMap<>();
-        map.put("address", address);
+        map.put("address", shopAddress);
         map.put("output", "json");
         map.put("ak", ak);
 
@@ -484,7 +522,6 @@ public class OrderServiceImpl implements OrderService {
             //配送距离超过5000米
             throw new OrderBusinessException("超出配送范围");
         }
-
     }
 
 }
